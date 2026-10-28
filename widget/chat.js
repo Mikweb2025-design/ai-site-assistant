@@ -181,7 +181,7 @@
   function stopAnim() { if (raf) cancelAnimationFrame(raf); raf = 0; }
 
   /* ---------- call / chat session ---------- */
-  var ws = null, ac = null, filt = null, mic = null, nodeIn = null, monitor = null, srcIn = null, playAt = 0, srcs = [], marks = [];
+  var ws = null, ac = null, wideOut = null, filt = null, mic = null, nodeIn = null, monitor = null, srcIn = null, playAt = 0, srcs = [], marks = [];
   var hinted = false, resamp = { resto: 0, ultimo: null }, tick = 0, sid = "MZdm" + Math.random().toString(16).slice(2), voiceOn = false, ended = false;
   var DEC = new Float32Array(256);
   for (var i = 0; i < 256; i++) { var u = ~i & 255, tt = (((u & 15) << 3) + 132) << ((u & 112) >> 4); DEC[i] = (u & 128 ? 132 - tt : tt - 132) / 32768; }
@@ -191,23 +191,33 @@
   var ios = /iP(?:hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
   // linear resample of one 8 kHz packet to the device rate, phase kept across packets (no metallic buzz)
-  function resample(vals, su) {
-    var n = vals.length, step = 8000 / su, out = [], x = resamp.resto;
-    var at = function (i) { return i < 0 ? (resamp.ultimo == null ? vals[0] : resamp.ultimo) : (i < n ? vals[i] : vals[n - 1]); };
+  function resample(vals, su, rate, st) {
+    st = st || resamp;
+    var n = vals.length, step = (rate || 8000) / su, out = [], x = st.resto;
+    var at = function (i) { return i < 0 ? (st.ultimo == null ? vals[0] : st.ultimo) : (i < n ? vals[i] : vals[n - 1]); };
     while (x < n - 1) { var j = Math.floor(x), fr = x - j, a = at(j), b = at(j + 1); out.push(a + (b - a) * fr); x += step; }
-    resamp.resto = x - n; resamp.ultimo = vals[n - 1];
+    st.resto = x - n; st.ultimo = vals[n - 1];
     return out;
   }
 
-  function play(payload) {
+  var resampW = { resto: 0, ultimo: null };
+  // media may be 8 kHz mu-law (telephone-style engines) or 16-bit PCM at media.sampleRate (wideband, no telephone filtering)
+  function play(payload, media) {
     if (!ac || !voiceOn) return;
     if (ac.state === "suspended") { ac.resume().catch(function () {}); if (!hinted) { hinted = true; setTimeout(function () { if (ac && ac.state === "suspended") msg("sys", T.blocked); }, 1500); } }
-    var raw = atob(payload), n = raw.length, vals = new Float32Array(n);
-    for (var i = 0; i < n; i++) vals[i] = DEC[raw.charCodeAt(i)] || 0;
-    var out = resample(vals, ac.sampleRate);
+    var raw = atob(payload), n = raw.length, vals, out, wide = !!(media && media.encoding === "pcm16le");
+    if (wide) {
+      var cnt = n >> 1; vals = new Float32Array(cnt);
+      for (var k = 0; k < cnt; k++) { var v = raw.charCodeAt(2 * k) | (raw.charCodeAt(2 * k + 1) << 8); vals[k] = (v > 32767 ? v - 65536 : v) / 32768; }
+      out = cnt ? resample(vals, ac.sampleRate, media.sampleRate || 24000, resampW) : [];
+    } else {
+      vals = new Float32Array(n);
+      for (var i = 0; i < n; i++) vals[i] = DEC[raw.charCodeAt(i)] || 0;
+      out = resample(vals, ac.sampleRate);
+    }
     if (!out.length) return;
     var buf = ac.createBuffer(1, out.length, ac.sampleRate); buf.getChannelData(0).set(out);
-    var s = ac.createBufferSource(); s.buffer = buf; s.connect(filt);
+    var s = ac.createBufferSource(); s.buffer = buf; s.connect(wide ? wideOut : filt);
     var now = ac.currentTime, at = playAt > now + 0.02 ? playAt : now + (ios ? 0.25 : 0.15);
     s.start(at); playAt = at + buf.duration; srcs.push(s);
     s.onended = function () { srcs = srcs.filter(function (x) { return x !== s; }); };
@@ -246,7 +256,7 @@
         var proto = location.protocol === "https:" ? "wss://" : "ws://";
         var url = /^https?:/.test(BASE) ? BASE.replace(/^http/, "ws") : proto + location.host + BASE;
         var resume = hadSession; ctxPending = resume && hist.length > 0;
-        var sock = new WebSocket(url + "/ws?lang=" + L + (resume ? "&resume=1" : "")), opened = false;
+        var sock = new WebSocket(url + "/ws?lang=" + L + "&wb=1" + (resume ? "&resume=1" : "")), opened = false;
         ws = sock; ended = false; tick = 0;
         sock.onopen = function () {
           opened = true; hadSession = true;
@@ -256,7 +266,7 @@
         };
         sock.onmessage = function (ev) {
           var m; try { m = JSON.parse(ev.data); } catch (e) { return; }
-          if (m.event === "media") play(m.media.payload);
+          if (m.event === "media") play(m.media.payload, m.media);
           else if (m.event === "mark") mark(m.mark.name);
           else if (m.event === "clear") clearAudio();
           else if (m.event === "text") {
@@ -284,7 +294,7 @@
     try { if (nodeIn) { nodeIn.port.onmessage = null; nodeIn.disconnect(); } if (monitor) monitor.disconnect(); if (srcIn) srcIn.disconnect(); } catch (e) {}
     if (mic) mic.getTracks().forEach(function (t) { t.stop(); });
     if (ac) { try { ac.close(); } catch (e) {} }
-    ac = filt = mic = nodeIn = monitor = srcIn = analyser = null; playAt = 0;
+    ac = filt = wideOut = mic = nodeIn = monitor = srcIn = analyser = null; playAt = 0;
   }
 
   // Must run synchronously inside the click: Safari / iOS (and Chrome without recent interaction) keep an
@@ -298,6 +308,8 @@
     var f2 = ac.createBiquadFilter(); f2.type = "lowpass"; f2.frequency.value = filt.frequency.value; f2.Q.value = 1.3;
     analyser = ac.createAnalyser(); analyser.fftSize = 512; abuf = new Uint8Array(analyser.fftSize);
     filt.connect(f2); f2.connect(analyser); f2.connect(ac.destination);
+    wideOut = ac.createGain(); wideOut.connect(analyser); wideOut.connect(ac.destination);   // wideband audio goes straight out: no 3.4 kHz telephone filters
+    resampW = { resto: 0, ultimo: null };
     hinted = false; voiceOn = true; playAt = 0; resamp = { resto: 0, ultimo: null };
   }
 

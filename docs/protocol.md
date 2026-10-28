@@ -21,9 +21,10 @@ The audio part deliberately reuses the **Twilio Media Streams** message shapes, 
 
 ## WebSocket
 
-`/guest/ws?lang=de[&resume=1]` (from the site: `/assistant/ws`). The upgrade is refused with
+`/guest/ws?lang=de[&resume=1][&wb=1]` (from the site: `/assistant/ws`). The upgrade is refused with
 `403` (origin not allowed), `429` (limit reached) or `503` (the line is busy).
 `resume=1` means "the widget reconnected after a silence": do not greet again.
+`wb=1` means "the widget can play wideband audio": the engine may then send `media` messages with 16-bit little-endian PCM at 24 kHz instead of 8 kHz µ-law (see below). Telephone-style engines can ignore it. Wideband avoids the muffled, robotic telephone sound that an 8 kHz band-limit gives a modern TTS voice.
 
 ### widget → engine
 
@@ -41,7 +42,8 @@ The audio part deliberately reuses the **Twilio Media Streams** message shapes, 
 ### engine → widget
 
 ```jsonc
-{ "event": "media", "streamSid": "MZ…", "media": { "payload": "<base64 µ-law 8 kHz>" } }  // the assistant's voice
+{ "event": "media", "streamSid": "MZ…", "media": { "payload": "<base64 µ-law 8 kHz>" } }  // the assistant's voice (telephone format)
+{ "event": "media", "streamSid": "MZ…", "media": { "payload": "<base64 PCM16LE>", "encoding": "pcm16le", "sampleRate": 24000 } }  // wideband, only if wb=1
 { "event": "mark",  "streamSid": "MZ…", "mark": { "name": "m7" } }   // ask the widget to confirm when it has played up to here
 { "event": "clear", "streamSid": "MZ…" }                              // barge-in: drop everything not yet played
 { "event": "text",  "from": "assistant" | "visitor", "text": "…" }    // transcript / typed text (the widget skips echoes of its own typing)
