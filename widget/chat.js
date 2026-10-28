@@ -124,14 +124,7 @@
     ctx2.drawImage(photo, 0, 0, 440, 440);
     // brows lift a little on stressed syllables
     if (brow > 0.15) ctx2.drawImage(photo, BROW.x * photo.naturalWidth / 440, BROW.y * photo.naturalHeight / 440, BROW.w * photo.naturalWidth / 440, 30 * photo.naturalHeight / 440, BROW.x, BROW.y - brow * 2.2, BROW.w, 30);
-    // mouth: jaw drops with the level, the opening gets wider on bright sounds (e, i, s) and rounder on dark ones (o, u)
-    var open = level * 10;
-    if (open > 0.5) {
-      var rx = 12 + 11 * wide + level * 3;
-      ctx2.fillStyle = "#2a1210";
-      ctx2.beginPath(); ctx2.ellipse(MOUTH.x, MOUTH.y + 1, rx, Math.max(1, open * 0.72), 0, 0, Math.PI * 2); ctx2.fill();
-      ctx2.drawImage(photo, (MOUTH.x - 60) * photo.naturalWidth / 440, (MOUTH.y + 4) * photo.naturalHeight / 440, 120 * photo.naturalWidth / 440, 56 * photo.naturalHeight / 440, MOUTH.x - 60, MOUTH.y + 4 + open * 0.8, 120, 56);
-    }
+    // (no mouth animation: it looked artificial on a photo; the portrait breathes, blinks and moves, and the ring shows speaking)
     // blink: a skin-coloured lid closes over each eye (sometimes twice in a row)
     if (blinkT >= 0) {
       var p = (t - blinkT) / 130, f = p < 0.5 ? p * 2 : (1 - p) * 2;
