@@ -13,7 +13,7 @@ like a contact form. The brain can run **entirely on your own machine**.
 * **Answers only about you and your site**, from your own public text. It does not invent facts, makes no promises on your behalf, and always says it is an AI.
 * **Bookings**: free slots from your opening hours, minus your busy times from **Nextcloud / CalDAV**; confirmation mails; an **ICS feed** for your calendar app.
 * **Messages for you** that arrive exactly like a contact-form mail (Reply-To = the visitor).
-* **A full admin** (English): widget, behaviour, voice (record or upload a sample, clone it), knowledge, booking & calendar, mail, limits.
+* **A full admin** (English): widget, behaviour, voice, knowledge, booking & calendar, mail, limits. Voice: record in the browser or upload a sample; the engine converts it with ffmpeg and installs it as a new voice.
 * **Works when your computer is off**: the widget falls back to text answers served from your own web server — no AI model, no third party.
 * **Privacy by construction**: conversations are not stored, audio stays on your machine, no cookies, nothing loaded unless you switch it on, the privacy-policy paragraphs appear only when the features are on.
 
@@ -135,6 +135,23 @@ repository. The protocol it speaks is documented in [`docs/protocol.md`](docs/pr
 * **Visitor-side**: no cookies, no third-party requests, nothing loaded while the assistant is switched off. Sample privacy-policy paragraphs hide/show with the features — see `examples/loader.js`.
 * **Voice cloning**: only clone voices you have consent for (your own, ideally), and always say that the speaker is an AI. The widget does.
 * The text of a conversation goes to whichever model you configure. With the default (local Ollama) it stays on your machine; with a hosted model it goes to that provider — say so in your privacy policy.
+
+## Status
+
+Extracted from a deployment that has been running on a real personal site since October 2026.
+
+| Part | State |
+|---|---|
+| Widget (chat, avatar, mobile, text fallback, reconnect after silence) | in production, tested in Chrome/Safari engines |
+| PHP backend + admin | smoke-tested end to end (`server/tests/smoke.sh`) |
+| Booking, double-booking refusal, mails, ICS | tested, also in production |
+| CalDAV (Nextcloud) | tested against a mock CalDAV server (discovery, busy times, write, delete) — please try it on yours and open an issue |
+| Engine logic (system-owned actions, limits) | unit-tested (`npm test`) |
+| Reference engine with a local Ollama brain | works; small models only (see roadmap) |
+| Voice pipeline (STT/TTS/clone) | **not included** — protocol documented in `docs/protocol.md` |
+
+Known limits: one conversation at a time (a speech engine works on one utterance at a time), the text fallback is keyword-based and
+only as good as the answers you write, and the animated avatar is a 2D warp of one photo (set the face landmarks for your photo).
 
 ## Roadmap
 
