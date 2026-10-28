@@ -1,0 +1,22 @@
+{
+  "name": "ai-site-assistant",
+  "version": "0.1.0",
+  "description": "A floating AI assistant (chat, optional voice, bookings) for your own website, with a token-protected PHP backend and a local-first engine.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "engine": "node mock-engine/server.mjs",
+    "test": "node test/run.mjs",
+    "demo": "node scripts/dev.mjs",
+    "bench": "scripts/bench-brain.sh"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  },
+  "engines": {
+    "node": ">=20.12"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^25.16.0"
+  }
+}

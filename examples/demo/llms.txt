@@ -1,0 +1,17 @@
+# Jane Doe — cloud & automation engineer (demo site)
+
+## Key facts
+- Name: Jane Doe
+- Role: Cloud & automation engineer, based in Berlin, Germany
+- Experience: 8 years running other people's systems; managed storage, identity and SSO, DNS and mail, Linux, Docker, Python
+- Status: open to new roles in cloud infrastructure, technical support and automation (Berlin)
+- Languages: English, German, Italian
+- Contact: owner@example.com
+
+## Projects
+- site-notes: a tiny static-site generator for personal notes.
+- dns-checker: a command-line tool that explains why a mail landed in spam (SPF, DKIM, DMARC).
+
+## FAQ
+Is she open to new opportunities? Yes: cloud infrastructure, technical support and automation roles, based in Berlin.
+What does she specialise in? Managed storage, identity and single sign-on, DNS and mail deliverability, Linux and Docker.

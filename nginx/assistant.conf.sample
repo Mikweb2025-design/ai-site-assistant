@@ -1,0 +1,29 @@
+# nginx proxy for the engine. The browser only ever talks to YOUR site (same origin), so your site's Content-Security-Policy can stay
+# `connect-src 'self'` and the engine's address is never exposed. The engine runs on a machine you control (e.g. at home, with a
+# port forwarded) — replace ENGINE_HOST:PORT.
+#
+# 1) http level, once (e.g. /etc/nginx/conf.d/assistant-zone.conf):
+#      limit_req_zone $binary_remote_addr zone=assistant:1m rate=20r/m;
+# 2) include this file inside your server { } block, then: nginx -t && nginx -s reload
+# 3) Your Permissions-Policy header must allow the microphone for your own origin:  microphone=(self)
+
+location = /assistant/status {
+    limit_req zone=assistant burst=10 nodelay;
+    proxy_pass http://ENGINE_HOST:PORT/guest/status;
+    proxy_connect_timeout 2s;
+    proxy_read_timeout 4s;
+    proxy_set_header X-Forwarded-For $remote_addr;      # the engine uses the real visitor address for its per-visitor limits
+}
+
+location = /assistant/ws {
+    limit_req zone=assistant burst=5 nodelay;
+    proxy_pass http://ENGINE_HOST:PORT/guest/ws$is_args$args;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Origin $http_origin;               # the engine checks it against ASSISTANT_ORIGINS
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_connect_timeout 3s;
+    proxy_read_timeout 360s;
+    proxy_send_timeout 360s;
+}
