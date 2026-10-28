@@ -125,6 +125,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $dav = ais_dav_cfg() ?? ['server' => '', 'user' => '', 'pass' => '', 'url' => '', 'name' => '', 'read' => true, 'write' => true, 'allday' => false];
         if ($a === 'davconnect') {
             $srv = rtrim(trim((string)($_POST['server'] ?? '')), '/');
+            // tolerant: a pasted DAV address (.../remote.php/dav/principals/...) is cut back to the server address
+            if (($pu = parse_url($srv)) && !empty($pu['host'])) {
+                $ppath = (string)($pu['path'] ?? ''); $cut = strpos($ppath, '/remote.php'); if ($cut !== false) { $ppath = substr($ppath, 0, $cut); }
+                $srv = ($pu['scheme'] ?? 'https') . '://' . $pu['host'] . (isset($pu['port']) ? ':' . $pu['port'] : '') . rtrim($ppath, '/');
+            }
             $usr = trim((string)($_POST['user'] ?? ''));
             $pw = (string)($_POST['pass'] ?? '');
             if ($pw === '' && ($dav['user'] ?? '') === $usr) { $pw = (string)$dav['pass']; }
@@ -137,7 +142,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
                     $davFound = $found;
                     ais_ensure_private();
                     $msg = ais_dav_save($dav) ? 'Connected. Choose the calendar to use.' : 'Error: cannot save the credentials.';
-                } else { $msg = $found; }
+                } else { $msg = $found . ' (' . $srv . ')'; }
             }
         } elseif ($a === 'davuse') {
             $u = (string)($_POST['url'] ?? '');
